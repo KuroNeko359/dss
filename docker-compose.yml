@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  # 存储服务端应用
+  server:
+    build: .
+    container_name: dss_server
+    ports:
+      - "8080:8080" # TCP 端口
+      - "8000:8000" # Web 控制面板端口
+    environment:
+      - STORAGE_TYPE=postgres
+      - DB_CONN=postgres://postgres:postgres@db:5432/dss_metadata?sslmode=disable
+    command: ["-storage", "postgres", "-conn", "postgres://postgres:postgres@db:5432/dss_metadata?sslmode=disable"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # PostgreSQL 数据库
   db:
     image: postgres:15-alpine
     container_name: dss_postgres
@@ -10,6 +26,11 @@ services:
       POSTGRES_DB: dss_metadata
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
