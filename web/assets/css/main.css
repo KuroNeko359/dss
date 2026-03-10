@@ -1,0 +1,25 @@
+[v-cloak] { display: none; }
+.glass-effect {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+}
+.file-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+.sidebar-item-active {
+    background-color: #ebf5ff;
+    color: #1e40af;
+    border-right: 4px solid #1e40af;
+}
+.drop-zone-active {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+}
+.list-enter-active, .list-leave-active {
+    transition: all 0.3s ease;
+}
+.list-enter-from, .list-leave-to {
+    opacity: 0;
+    transform: translateY(10px);
+}
