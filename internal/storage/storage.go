@@ -26,6 +26,8 @@ type Storage interface {
 	Get(key string) ([]byte, error)
 	// Delete 根据键删除对应的键值对
 	Delete(key string) error
+	// List 返回存储中所有的键
+	List() ([]string, error)
 }
 
 // MemoryStorage 是一个基于内存的线程安全存储实现
@@ -66,6 +68,17 @@ func (s *MemoryStorage) Delete(key string) error {
 	defer s.mu.Unlock()
 	delete(s.data, key)
 	return nil
+}
+
+// List 实现了 Storage 接口，返回内存中所有的键
+func (s *MemoryStorage) List() ([]string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	keys := make([]string, 0, len(s.data))
+	for k := range s.data {
+		keys = append(keys, k)
+	}
+	return keys, nil
 }
 
 // FileStorage 是一个基于磁盘文件的存储实现，适用于存储较大文件
@@ -113,6 +126,25 @@ func (s *FileStorage) Delete(key string) error {
 		return err
 	}
 	return nil
+}
+
+// List 返回文件存储中的所有键（相对于根目录的路径）
+func (s *FileStorage) List() ([]string, error) {
+	var keys []string
+	err := filepath.Walk(s.rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			rel, err := filepath.Rel(s.rootDir, path)
+			if err != nil {
+				return err
+			}
+			keys = append(keys, rel)
+		}
+		return nil
+	})
+	return keys, err
 }
 
 // PostgresStorage 是一个基于 PostgreSQL 的存储实现，用于持久化元数据或小对象
@@ -185,4 +217,24 @@ func (s *PostgresStorage) Delete(key string) error {
 	query := `DELETE FROM storage WHERE key = $1`
 	_, err := s.db.Exec(query, key)
 	return err
+}
+
+// List 从 PostgreSQL 获取所有键
+func (s *PostgresStorage) List() ([]string, error) {
+	query := `SELECT key FROM storage ORDER BY updated_at DESC`
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }

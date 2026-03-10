@@ -1,14 +1,14 @@
 .PHONY: up down server client test clean
 
-# 启动整个系统 (Docker 部署)
-deploy:
-	docker-compose up -d --build
+# 启动基础设施 (Postgres)
+up:
+	docker-compose up -d
 
-# 停止整个系统
-stop:
+# 停止并移除基础设施
+down:
 	docker-compose down
 
-# 启动服务端 (本地开发，使用 Postgres 模式)
+# 启动服务端 (同时开启 TCP 和 Web 控制面板)
 server:
 	go run cmd/server/main.go -storage postgres -conn "postgres://postgres:postgres@localhost:5432/dss_metadata?sslmode=disable"
 

@@ -3,79 +3,340 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSS - 分布式存储系统管理</title>
+    <title>DSS - 现代化分布式存储管理系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         [v-cloak] { display: none; }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar-item-active {
+            background-color: #ebf5ff;
+            color: #1e40af;
+            border-right: 4px solid #1e40af;
+        }
+        .drop-zone-active {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div id="app" v-cloak class="container mx-auto px-4 py-8 max-w-2xl">
-        <header class="mb-10 text-center">
-            <h1 class="text-4xl font-bold text-blue-600 mb-2">DSS 控制面板</h1>
-            <p class="text-gray-600">分布式存储系统 - 分散式、持久化、高效</p>
-        </header>
-
-        <!-- 写入操作 -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">写入数据 (PUT)</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">键 (Key)</label>
-                    <input v-model="putKey" type="text" placeholder="例如: user/profile" class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+<body class="bg-slate-50 min-h-screen text-slate-800">
+    <div id="app" v-cloak class="flex h-screen overflow-hidden">
+        
+        <!-- 侧边栏 -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col hidden md:flex">
+            <div class="p-6">
+                <div class="flex items-center space-x-3 text-blue-600">
+                    <i class="fas fa-database text-2xl"></i>
+                    <h1 class="text-xl font-bold tracking-tight">DSS Explorer</h1>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">值 (Value)</label>
-                    <textarea v-model="putValue" rows="3" placeholder="输入存储内容..." class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
-                </div>
-                <button @click="handlePut" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
-                    保存数据
-                </button>
-            </div>
-        </div>
-
-        <!-- 读取操作 -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">读取数据 (GET)</h2>
-            <div class="flex space-x-2 mb-4">
-                <input v-model="getKey" @keyup.enter="handleGet" type="text" placeholder="输入要查询的键" class="flex-1 px-4 py-2 border rounded-md focus:ring-2 focus:ring-green-500 outline-none">
-                <button @click="handleGet" class="bg-green-600 text-white font-bold py-2 px-6 rounded-md hover:bg-green-700 transition duration-200">
-                    查询
-                </button>
             </div>
             
-            <div v-if="getResult !== null" class="mt-4 p-4 rounded-md" :class="getResultSuccess ? 'bg-green-50' : 'bg-red-50'">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-sm font-bold" :class="getResultSuccess ? 'text-green-700' : 'text-red-700'">
-                        {{ getResultSuccess ? '查询结果:' : '错误:' }}
-                    </span>
-                    <button v-if="getResultSuccess" @click="handleDelete" class="text-xs text-red-500 hover:text-red-700 underline">
-                        删除该记录
+            <nav class="flex-1 px-3 space-y-1">
+                <a href="#" @click="currentTab = 'all'" :class="{'sidebar-item-active': currentTab === 'all'}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-slate-100 transition">
+                    <i class="fas fa-folder-open mr-3 w-5 text-center"></i>
+                    全部文件
+                </a>
+                <a href="#" @click="currentTab = 'images'" :class="{'sidebar-item-active': currentTab === 'images'}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-slate-100 transition">
+                    <i class="fas fa-image mr-3 w-5 text-center"></i>
+                    图片
+                </a>
+                <a href="#" @click="currentTab = 'media'" :class="{'sidebar-item-active': currentTab === 'media'}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-slate-100 transition">
+                    <i class="fas fa-play-circle mr-3 w-5 text-center"></i>
+                    视频 / 音频
+                </a>
+                <a href="#" @click="currentTab = 'docs'" :class="{'sidebar-item-active': currentTab === 'docs'}" class="flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-slate-100 transition">
+                    <i class="fas fa-file-alt mr-3 w-5 text-center"></i>
+                    文档
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-slate-100">
+                <div class="bg-slate-50 rounded-xl p-4">
+                    <div class="flex justify-between text-xs font-semibold text-slate-500 mb-2">
+                        <span>存储状态</span>
+                        <span>PostgreSQL</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-1.5">
+                        <div class="bg-blue-500 h-1.5 rounded-full" style="width: 45%"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- 顶栏 -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0">
+                <div class="flex items-center flex-1">
+                    <div class="relative w-96">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input v-model="searchQuery" type="text" placeholder="搜索文件..." class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white sm:text-sm transition">
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button @click="showUploadModal = true" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition flex items-center shadow-sm shadow-blue-200">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i>
+                        上传文件
+                    </button>
+                    <button @click="fetchList" class="p-2 text-slate-400 hover:text-blue-600 transition">
+                        <i class="fas fa-sync-alt" :class="{'animate-spin': isRefreshing}"></i>
                     </button>
                 </div>
-                <pre class="whitespace-pre-wrap text-gray-800 break-all">{{ getResult }}</pre>
+            </header>
+
+            <!-- 文件展示区 -->
+            <div class="flex-1 overflow-y-auto p-8 bg-slate-50">
+                <!-- 视图切换 -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-800 capitalize">{{ currentTabName }}</h2>
+                    <div class="flex bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+                        <button @click="viewMode = 'grid'" :class="{'bg-slate-100 text-blue-600': viewMode === 'grid'}" class="p-2 rounded-md transition hover:text-blue-600">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button @click="viewMode = 'list'" :class="{'bg-slate-100 text-blue-600': viewMode === 'list'}" class="p-2 rounded-md transition hover:text-blue-600">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 网格布局 -->
+                <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    <div v-for="file in filteredFiles" :key="file" @click="previewFile(file)" class="file-card bg-white p-4 rounded-2xl border border-slate-200 transition cursor-pointer group">
+                        <div class="aspect-square bg-slate-50 rounded-xl mb-4 flex items-center justify-center text-4xl overflow-hidden">
+                            <img v-if="isImage(file)" :src="getFileUrl(file)" class="w-full h-full object-cover">
+                            <i v-else :class="getFileIcon(file)" class="text-slate-400 group-hover:text-blue-500 transition"></i>
+                        </div>
+                        <div class="flex items-start justify-between">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-slate-700 truncate" :title="file">{{ file }}</p>
+                                <p class="text-xs text-slate-400 mt-1 uppercase">{{ getExt(file) }} 文件</p>
+                            </div>
+                            <div class="relative ml-2">
+                                <button @click.stop="handleDelete(file)" class="p-1.5 text-slate-300 hover:text-red-500 transition">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 列表布局 -->
+                <div v-else class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <table class="min-w-full divide-y divide-slate-100">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">名称</th>
+                                <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">类型</th>
+                                <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="file in filteredFiles" :key="file" @click="previewFile(file)" class="hover:bg-slate-50 transition cursor-pointer group">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <i :class="getFileIcon(file)" class="text-slate-400 mr-3 w-5 text-center"></i>
+                                        <span class="text-sm font-medium text-slate-700">{{ file }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 uppercase">
+                                    {{ getExt(file) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button @click.stop="handleDelete(file)" class="text-slate-300 hover:text-red-500 p-2 transition">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 空状态 -->
+                <div v-if="filteredFiles.length === 0" class="flex flex-col items-center justify-center py-32">
+                    <div class="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center text-slate-300 mb-6">
+                        <i class="fas fa-folder-open text-5xl"></i>
+                    </div>
+                    <p class="text-slate-500 font-medium">这里什么都没有</p>
+                    <button @click="showUploadModal = true" class="mt-4 text-blue-600 font-bold hover:underline">点击上传文件</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 上传弹窗 -->
+        <div v-if="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showUploadModal = false"></div>
+            <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-lg font-bold">上传文件</h3>
+                    <button @click="showUploadModal = false" class="text-slate-400 hover:text-slate-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-8">
+                    <div @dragover.prevent="isDragging = true" 
+                         @dragleave.prevent="isDragging = false"
+                         @drop.prevent="handleDrop"
+                         @click="$refs.fileInput.click()"
+                         :class="{'drop-zone-active': isDragging || selectedFile}"
+                         class="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center cursor-pointer hover:border-blue-400 transition group">
+                        
+                        <input type="file" ref="fileInput" class="hidden" @change="handleFileChange">
+                        
+                        <div v-if="!selectedFile" class="space-y-4">
+                            <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 mx-auto group-hover:scale-110 transition">
+                                <i class="fas fa-cloud-upload-alt text-2xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-slate-700 font-bold">点击或拖拽文件到这里</p>
+                                <p class="text-slate-400 text-sm mt-1">支持所有类型，最大 10MB</p>
+                            </div>
+                        </div>
+                        <div v-else class="space-y-4">
+                            <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-500 mx-auto">
+                                <i class="fas fa-file-circle-check text-2xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-slate-700 font-bold">{{ selectedFile.name }}</p>
+                                <p class="text-slate-400 text-sm mt-1">{{ formatSize(selectedFile.size) }}</p>
+                            </div>
+                            <button @click.stop="selectedFile = null" class="text-xs text-red-500 hover:underline">取消重新选择</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 bg-slate-50 flex justify-end space-x-3">
+                    <button @click="showUploadModal = false" class="px-6 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 transition">取消</button>
+                    <button @click="handleUpload" :disabled="!selectedFile || isUploading" class="px-8 py-2 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50">
+                        <i v-if="isUploading" class="fas fa-spinner animate-spin mr-2"></i>
+                        {{ isUploading ? '上传中...' : '开始上传' }}
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- 状态提示 -->
-        <div v-if="message" class="fixed bottom-4 right-4 px-6 py-3 rounded-md shadow-lg text-white font-medium animate-bounce" :class="messageType === 'success' ? 'bg-green-500' : 'bg-red-500'">
-            {{ message }}
+        <!-- 预览弹窗 -->
+        <div v-if="previewingFile" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-md" @click="previewingFile = null"></div>
+            <div class="relative z-10 w-full max-w-5xl flex flex-col items-center">
+                
+                <!-- 控制栏 -->
+                <div class="w-full flex justify-between items-center mb-6 text-white">
+                    <div class="flex items-center space-x-4">
+                        <i :class="getFileIcon(previewingFile)" class="text-2xl text-blue-400"></i>
+                        <div>
+                            <h3 class="font-bold">{{ previewingFile }}</h3>
+                            <p class="text-xs text-slate-400">分布式存储预览</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a :href="getFileUrl(previewingFile)" download class="p-2 hover:text-blue-400 transition" title="下载">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button @click="previewingFile = null" class="p-2 hover:text-red-400 transition">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 预览内容 -->
+                <div class="w-full bg-black/40 rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl border border-white/10" style="min-height: 400px; max-height: 80vh;">
+                    
+                    <!-- 图片 -->
+                    <img v-if="isImage(previewingFile)" :src="getFileUrl(previewingFile)" class="max-w-full max-h-full object-contain">
+                    
+                    <!-- 视频 -->
+                    <video v-else-if="isVideo(previewingFile)" controls autoplay class="max-w-full max-h-full">
+                        <source :src="getFileUrl(previewingFile)">
+                    </video>
+                    
+                    <!-- 音频 -->
+                    <div v-else-if="isAudio(previewingFile)" class="w-full max-w-md p-8 text-center space-y-6">
+                        <div class="w-32 h-32 bg-blue-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20 animate-pulse">
+                            <i class="fas fa-music text-5xl text-white"></i>
+                        </div>
+                        <audio controls autoplay class="w-full">
+                            <source :src="getFileUrl(previewingFile)">
+                        </audio>
+                    </div>
+                    
+                    <!-- 文本 -->
+                    <div v-else-if="isText(previewingFile)" class="w-full h-full bg-slate-900 p-8 overflow-y-auto font-mono text-slate-300 text-sm leading-relaxed">
+                        <pre>{{ textContent }}</pre>
+                    </div>
+
+                    <!-- 无法预览 -->
+                    <div v-else class="text-center text-slate-500 space-y-4">
+                        <i class="fas fa-file-circle-exclamation text-7xl opacity-20"></i>
+                        <p>该文件类型暂不支持在线预览</p>
+                        <a :href="getFileUrl(previewingFile)" download class="inline-block bg-white text-slate-900 px-6 py-2 rounded-xl font-bold">下载文件</a>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- 消息通知 -->
+        <transition-group name="list" tag="div" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] space-y-2">
+            <div v-if="message" :key="message" :class="messageType === 'success' ? 'bg-emerald-500' : 'bg-rose-500'" class="px-8 py-4 rounded-2xl shadow-2xl text-white font-bold flex items-center min-w-[300px] animate-in slide-in-from-bottom-10 duration-300">
+                <i :class="messageType === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'" class="mr-3 text-lg"></i>
+                {{ message }}
+            </div>
+        </transition-group>
     </div>
 
     <script>
-        const { createApp, ref } = Vue;
+        const { createApp, ref, computed, watch } = Vue;
 
         createApp({
             setup() {
-                const putKey = ref('');
-                const putValue = ref('');
-                const getKey = ref('');
-                const getResult = ref(null);
-                const getResultSuccess = ref(true);
+                const keyList = ref([]);
+                const searchQuery = ref('');
+                const currentTab = ref('all');
+                const viewMode = ref('grid');
+                const showUploadModal = ref(false);
+                const selectedFile = ref(null);
+                const isUploading = ref(false);
+                const isDragging = ref(false);
+                const isRefreshing = ref(false);
                 const message = ref('');
                 const messageType = ref('success');
+                const previewingFile = ref(null);
+                const textContent = ref('');
+
+                const currentTabName = computed(() => {
+                    const names = { 'all': '全部文件', 'images': '图片', 'media': '视频 / 音频', 'docs': '文档' };
+                    return names[currentTab.value];
+                });
+
+                const filteredFiles = computed(() => {
+                    let files = keyList.value;
+                    
+                    // 搜索过滤
+                    if (searchQuery.value) {
+                        files = files.filter(f => f.toLowerCase().includes(searchQuery.value.toLowerCase()));
+                    }
+
+                    // 标签页过滤
+                    if (currentTab.value === 'images') {
+                        files = files.filter(f => isImage(f));
+                    } else if (currentTab.value === 'media') {
+                        files = files.filter(f => isVideo(f) || isAudio(f));
+                    } else if (currentTab.value === 'docs') {
+                        files = files.filter(f => isText(f) || f.endsWith('.pdf'));
+                    }
+
+                    return files;
+                });
 
                 const showMessage = (msg, type = 'success') => {
                     message.value = msg;
@@ -83,64 +344,112 @@
                     setTimeout(() => message.value = '', 3000);
                 };
 
-                const handlePut = async () => {
-                    if (!putKey.value) return showMessage('请输入 Key', 'error');
+                const fetchList = async () => {
+                    isRefreshing.value = true;
                     try {
-                        const response = await fetch('/api/storage', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ key: putKey.value, value: putValue.value })
-                        });
+                        const response = await fetch('/api/list');
                         if (response.ok) {
-                            showMessage('数据保存成功');
-                            putKey.value = '';
-                            putValue.value = '';
-                        } else {
-                            showMessage('保存失败: ' + await response.text(), 'error');
+                            keyList.value = await response.json();
                         }
-                    } catch (err) {
-                        showMessage('网络错误', 'error');
+                    } finally {
+                        setTimeout(() => isRefreshing.value = false, 500);
                     }
                 };
 
-                const handleGet = async () => {
-                    if (!getKey.value) return showMessage('请输入要查询的 Key', 'error');
+                const getExt = (f) => f.split('.').pop().toLowerCase();
+                const isImage = (f) => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(getExt(f));
+                const isVideo = (f) => ['mp4', 'webm', 'ogg'].includes(getExt(f));
+                const isAudio = (f) => ['mp3', 'wav', 'm4a'].includes(getExt(f));
+                const isText = (f) => ['txt', 'md', 'json', 'js', 'css', 'go', 'py', 'sql'].includes(getExt(f));
+
+                const getFileIcon = (f) => {
+                    const ext = getExt(f);
+                    if (isImage(f)) return 'fas fa-image';
+                    if (isVideo(f)) return 'fas fa-video';
+                    if (isAudio(f)) return 'fas fa-music';
+                    if (ext === 'pdf') return 'fas fa-file-pdf';
+                    if (isText(f)) return 'fas fa-file-code';
+                    return 'fas fa-file';
+                };
+
+                const getFileUrl = (f) => `/api/storage?key=${encodeURIComponent(f)}`;
+
+                const handleFileChange = (e) => {
+                    selectedFile.value = e.target.files[0];
+                };
+
+                const handleDrop = (e) => {
+                    isDragging.value = false;
+                    selectedFile.value = e.dataTransfer.files[0];
+                };
+
+                const handleUpload = async () => {
+                    if (!selectedFile.value) return;
+                    isUploading.value = true;
+                    const formData = new FormData();
+                    formData.append('file', selectedFile.value);
+
                     try {
-                        const response = await fetch(`/api/storage?key=${encodeURIComponent(getKey.value)}`);
+                        const response = await fetch('/api/upload', { method: 'POST', body: formData });
                         if (response.ok) {
-                            getResult.value = await response.text();
-                            getResultSuccess.value = true;
+                            showMessage('文件已安全存入 DSS');
+                            selectedFile.value = null;
+                            showUploadModal.value = false;
+                            fetchList();
                         } else {
-                            getResult.value = response.status === 404 ? '未找到该键的数据' : await response.text();
-                            getResultSuccess.value = false;
+                            showMessage('上传失败: ' + await response.text(), 'error');
                         }
                     } catch (err) {
-                        showMessage('网络错误', 'error');
+                        showMessage('网络错误，请检查连接', 'error');
+                    } finally {
+                        isUploading.value = false;
                     }
                 };
 
-                const handleDelete = async () => {
-                    if (!confirm(`确定要删除 ${getKey.value} 吗？`)) return;
+                const handleDelete = async (key) => {
+                    if (!confirm(`确定要彻底删除 ${key} 吗？`)) return;
                     try {
-                        const response = await fetch(`/api/storage?key=${encodeURIComponent(getKey.value)}`, {
-                            method: 'DELETE'
-                        });
+                        const response = await fetch(`/api/storage?key=${encodeURIComponent(key)}`, { method: 'DELETE' });
                         if (response.ok) {
-                            showMessage('数据已删除');
-                            getResult.value = null;
-                            getKey.value = '';
-                        } else {
-                            showMessage('删除失败', 'error');
+                            showMessage('文件已从存储中移除');
+                            if (previewingFile.value === key) previewingFile.value = null;
+                            fetchList();
                         }
                     } catch (err) {
-                        showMessage('网络错误', 'error');
+                        showMessage('删除失败', 'error');
                     }
                 };
+
+                const previewFile = async (file) => {
+                    previewingFile.value = file;
+                    if (isText(file)) {
+                        textContent.value = '正在加载内容...';
+                        try {
+                            const res = await fetch(getFileUrl(file));
+                            textContent.value = await res.text();
+                        } catch (e) {
+                            textContent.value = '无法加载文本内容';
+                        }
+                    }
+                };
+
+                const formatSize = (bytes) => {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
+
+                fetchList();
 
                 return {
-                    putKey, putValue, getKey, getResult, getResultSuccess,
-                    message, messageType,
-                    handlePut, handleGet, handleDelete
+                    keyList, searchQuery, currentTab, viewMode, showUploadModal, selectedFile,
+                    isUploading, isDragging, isRefreshing, message, messageType,
+                    previewingFile, textContent, currentTabName, filteredFiles,
+                    fetchList, handleFileChange, handleDrop, handleUpload, handleDelete,
+                    previewFile, getFileIcon, getFileUrl, formatSize, getExt,
+                    isImage, isVideo, isAudio, isText
                 };
             }
         }).mount('#app');
