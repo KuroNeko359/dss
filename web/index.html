@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSS - 分布式存储系统管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" v-cloak class="container mx-auto px-4 py-8 max-w-2xl">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-blue-600 mb-2">DSS 控制面板</h1>
+            <p class="text-gray-600">分布式存储系统 - 分散式、持久化、高效</p>
+        </header>
+
+        <!-- 写入操作 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">写入数据 (PUT)</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">键 (Key)</label>
+                    <input v-model="putKey" type="text" placeholder="例如: user/profile" class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">值 (Value)</label>
+                    <textarea v-model="putValue" rows="3" placeholder="输入存储内容..." class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+                <button @click="handlePut" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                    保存数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 读取操作 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">读取数据 (GET)</h2>
+            <div class="flex space-x-2 mb-4">
+                <input v-model="getKey" @keyup.enter="handleGet" type="text" placeholder="输入要查询的键" class="flex-1 px-4 py-2 border rounded-md focus:ring-2 focus:ring-green-500 outline-none">
+                <button @click="handleGet" class="bg-green-600 text-white font-bold py-2 px-6 rounded-md hover:bg-green-700 transition duration-200">
+                    查询
+                </button>
+            </div>
+            
+            <div v-if="getResult !== null" class="mt-4 p-4 rounded-md" :class="getResultSuccess ? 'bg-green-50' : 'bg-red-50'">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm font-bold" :class="getResultSuccess ? 'text-green-700' : 'text-red-700'">
+                        {{ getResultSuccess ? '查询结果:' : '错误:' }}
+                    </span>
+                    <button v-if="getResultSuccess" @click="handleDelete" class="text-xs text-red-500 hover:text-red-700 underline">
+                        删除该记录
+                    </button>
+                </div>
+                <pre class="whitespace-pre-wrap text-gray-800 break-all">{{ getResult }}</pre>
+            </div>
+        </div>
+
+        <!-- 状态提示 -->
+        <div v-if="message" class="fixed bottom-4 right-4 px-6 py-3 rounded-md shadow-lg text-white font-medium animate-bounce" :class="messageType === 'success' ? 'bg-green-500' : 'bg-red-500'">
+            {{ message }}
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const putKey = ref('');
+                const putValue = ref('');
+                const getKey = ref('');
+                const getResult = ref(null);
+                const getResultSuccess = ref(true);
+                const message = ref('');
+                const messageType = ref('success');
+
+                const showMessage = (msg, type = 'success') => {
+                    message.value = msg;
+                    messageType.value = type;
+                    setTimeout(() => message.value = '', 3000);
+                };
+
+                const handlePut = async () => {
+                    if (!putKey.value) return showMessage('请输入 Key', 'error');
+                    try {
+                        const response = await fetch('/api/storage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key: putKey.value, value: putValue.value })
+                        });
+                        if (response.ok) {
+                            showMessage('数据保存成功');
+                            putKey.value = '';
+                            putValue.value = '';
+                        } else {
+                            showMessage('保存失败: ' + await response.text(), 'error');
+                        }
+                    } catch (err) {
+                        showMessage('网络错误', 'error');
+                    }
+                };
+
+                const handleGet = async () => {
+                    if (!getKey.value) return showMessage('请输入要查询的 Key', 'error');
+                    try {
+                        const response = await fetch(`/api/storage?key=${encodeURIComponent(getKey.value)}`);
+                        if (response.ok) {
+                            getResult.value = await response.text();
+                            getResultSuccess.value = true;
+                        } else {
+                            getResult.value = response.status === 404 ? '未找到该键的数据' : await response.text();
+                            getResultSuccess.value = false;
+                        }
+                    } catch (err) {
+                        showMessage('网络错误', 'error');
+                    }
+                };
+
+                const handleDelete = async () => {
+                    if (!confirm(`确定要删除 ${getKey.value} 吗？`)) return;
+                    try {
+                        const response = await fetch(`/api/storage?key=${encodeURIComponent(getKey.value)}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            showMessage('数据已删除');
+                            getResult.value = null;
+                            getKey.value = '';
+                        } else {
+                            showMessage('删除失败', 'error');
+                        }
+                    } catch (err) {
+                        showMessage('网络错误', 'error');
+                    }
+                };
+
+                return {
+                    putKey, putValue, getKey, getResult, getResultSuccess,
+                    message, messageType,
+                    handlePut, handleGet, handleDelete
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

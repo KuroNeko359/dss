@@ -1,0 +1,27 @@
+# Binaries
+/bin/
+/dist/
+/out/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Dependencies
+/vendor/
+go.sum
+
+# Local data and logs
+/my_storage/
+/data/
+/my_data/
+*.log
+
+# IDE and System files
+.vscode/
+.idea/
+.DS_Store
+
+# Docker volumes
+postgres_data/
